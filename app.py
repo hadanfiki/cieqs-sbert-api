@@ -25,6 +25,7 @@ def load_model():
 
 
 def ambil_menu():
+
     response = requests.get(FIREBASE_URL)
 
     if response.status_code != 200:
@@ -55,6 +56,7 @@ def ambil_menu():
         ).get("booleanValue", False)
 
         if tersedia:
+
             menu.append({
                 "nama": nama,
                 "deskripsi": deskripsi,
@@ -66,18 +68,41 @@ def ambil_menu():
 
 menu = ambil_menu()
 
+
 if not menu:
 
     st.error("Data menu tidak ditemukan.")
 
 else:
 
-    pilihan = st.selectbox(
-        "Pilih menu:",
-        [item["nama"] for item in menu]
-    )
+    # Mengambil menu dari URL
+    parameter_menu = st.query_params.get("menu")
 
-    if st.button("Tampilkan Rekomendasi"):
+    nama_menu = [
+        item["nama"]
+        for item in menu
+    ]
+
+    # Jika ada menu dari URL
+    if parameter_menu and parameter_menu in nama_menu:
+
+        pilihan = parameter_menu
+        tampilkan = True
+
+    else:
+
+        pilihan = st.selectbox(
+            "Pilih menu:",
+            nama_menu
+        )
+
+        tampilkan = st.button(
+            "Tampilkan Rekomendasi"
+        )
+
+
+    # Menampilkan rekomendasi
+    if tampilkan:
 
         model = load_model()
 
@@ -93,18 +118,29 @@ else:
 
             teks_menu.append(teks)
 
-        embedding = model.encode(teks_menu)
+
+        embedding = model.encode(
+            teks_menu
+        )
+
 
         target_index = -1
 
         for i in range(len(menu)):
 
-            if menu[i]["nama"].lower() == pilihan.lower():
+            if (
+                menu[i]["nama"].lower()
+                == pilihan.lower()
+            ):
 
                 target_index = i
                 break
 
-        similarity = cosine_similarity(embedding)
+
+        similarity = cosine_similarity(
+            embedding
+        )
+
 
         hasil = []
 
@@ -113,20 +149,29 @@ else:
             if i != target_index:
 
                 hasil.append({
+
                     "nama": menu[i]["nama"],
+
                     "similarity": float(
-                        similarity[target_index][i]
+                        similarity[
+                            target_index
+                        ][i]
                     )
+
                 })
 
+
+        # Ranking
         hasil.sort(
             key=lambda x: x["similarity"],
             reverse=True
         )
 
+
         st.success(
             f"Rekomendasi untuk: {pilihan}"
         )
+
 
         for nomor, item in enumerate(
             hasil,
